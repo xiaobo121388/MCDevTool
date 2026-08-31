@@ -29,6 +29,29 @@ elseif(UNIX)
     target_compile_definitions(zlib_internal PRIVATE HAVE_UNISTD_H)
 endif()
 
+# Classic MiniZip is used by mcdk's project exporter. Keep it as a small,
+# private-to-this-repository target so the exporter and NBT share the same
+# bundled zlib implementation on every supported platform.
+set(MINIZIP_SOURCES
+    libs/zlib-1.3.1/contrib/minizip/ioapi.c
+    libs/zlib-1.3.1/contrib/minizip/unzip.c
+    libs/zlib-1.3.1/contrib/minizip/zip.c
+)
+if(WIN32)
+    list(APPEND MINIZIP_SOURCES libs/zlib-1.3.1/contrib/minizip/iowin32.c)
+endif()
+
+add_library(minizip_internal STATIC ${MINIZIP_SOURCES})
+target_include_directories(minizip_internal PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs/zlib-1.3.1/contrib/minizip
+)
+target_link_libraries(minizip_internal PUBLIC zlib_internal)
+if(MSVC)
+    target_compile_definitions(minizip_internal PRIVATE _CRT_SECURE_NO_WARNINGS)
+elseif(UNIX)
+    target_compile_definitions(minizip_internal PRIVATE HAVE_UNISTD_H)
+endif()
+
 # binarystream library
 set(BINARYSTREAM_SOURCES
     libs/binarystream/src/binarystream/BinaryStream.cpp

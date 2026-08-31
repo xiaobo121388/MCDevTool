@@ -99,6 +99,50 @@ namespace mcdk {
             options.serializedJson = value->dump();
         }
 
+        void parseExportOptions(const Json& root, ExportOptions& options) {
+            const auto value = root.find("export_options");
+            if (value == root.end()) {
+                return;
+            }
+            if (!value->is_object()) {
+                throw std::runtime_error("export_options must be an object.");
+            }
+
+            const auto legacyDefaults = value->find("use_default_full_excludes");
+            const auto patterns       = value->find("full_exclude_patterns");
+            options.useDefaultFullExcludes = legacyDefaults != value->end()
+                                                   ? legacyDefaults->get<bool>()
+                                                   : patterns == value->end();
+            const auto cleanPatterns = value->find("clean_exclude_patterns");
+            if (cleanPatterns != value->end()) {
+                if (!cleanPatterns->is_array()) {
+                    throw std::runtime_error("export_options.clean_exclude_patterns must be an array.");
+                }
+                options.cleanExcludePatterns.clear();
+                options.cleanExcludePatterns.reserve(cleanPatterns->size());
+                for (const auto& pattern : *cleanPatterns) {
+                    if (!pattern.is_string()) {
+                        throw std::runtime_error("Each clean export exclude pattern must be a string.");
+                    }
+                    options.cleanExcludePatterns.push_back(pattern.get<std::string>());
+                }
+            }
+            if (patterns == value->end()) {
+                return;
+            }
+            if (!patterns->is_array()) {
+                throw std::runtime_error("export_options.full_exclude_patterns must be an array.");
+            }
+            options.fullExcludePatterns.clear();
+            options.fullExcludePatterns.reserve(patterns->size());
+            for (const auto& pattern : *patterns) {
+                if (!pattern.is_string()) {
+                    throw std::runtime_error("Each full export exclude pattern must be a string.");
+                }
+                options.fullExcludePatterns.push_back(pattern.get<std::string>());
+            }
+        }
+
         GameLogProtocol parseLogProtocol(const Json& root) {
             const auto value = root.find("log_protocol");
             if (value == root.end()) {
@@ -214,6 +258,7 @@ namespace mcdk {
                 config.mcpServer.serverIp   = mcp->value("server_ip", "localhost");
                 config.mcpServer.serverPort = mcp->value("server_port", 19133);
             }
+            parseExportOptions(root, config.exportOptions);
             return config;
         }
 
@@ -238,6 +283,12 @@ namespace mcdk {
                 {"enable_cheats", config.world.level.enableCheats},
                 {"keep_inventory", config.world.level.keepInventory},
                 {"game_executable_path", MCDevTool::Utils::pathToGenericUtf8(config.gameExecutablePath)},
+                {"export_options",
+                 {
+                      {"clean_exclude_patterns", config.exportOptions.cleanExcludePatterns},
+                      {"use_default_full_excludes", config.exportOptions.useDefaultFullExcludes},
+                      {"full_exclude_patterns", config.exportOptions.fullExcludePatterns},
+                 }},
             };
         }
 

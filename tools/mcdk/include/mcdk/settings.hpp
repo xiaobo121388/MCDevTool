@@ -82,6 +82,12 @@ namespace mcdk {
         int         serverPort = 19133;
     };
 
+    struct ExportOptions {
+        bool                     useDefaultFullExcludes = true;
+        std::vector<std::string> cleanExcludePatterns;
+        std::vector<std::string> fullExcludePatterns;
+    };
+
     struct UserConfig {
         std::filesystem::path         gameExecutablePath;
         std::vector<UserModDirConfig> modDirectories;
@@ -95,6 +101,7 @@ namespace mcdk {
         MCDevTool::Style::StyleConfig windowStyle;
         NeteaseConfig                 netease;
         McpServerConfig               mcpServer;
+        ExportOptions                 exportOptions;
         GameLogProtocol               logProtocol = GameLogProtocol::Stdio;
     };
 

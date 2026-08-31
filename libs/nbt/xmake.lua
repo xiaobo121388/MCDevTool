@@ -15,6 +15,27 @@ option("kind")
     set_showmenu(true)
 option_end()
 
+target("minizip_internal")
+    set_kind("static")
+    set_languages("c11")
+    add_files(
+        "libs/zlib-1.3.1/contrib/minizip/ioapi.c",
+        "libs/zlib-1.3.1/contrib/minizip/unzip.c",
+        "libs/zlib-1.3.1/contrib/minizip/zip.c"
+    )
+    if is_plat("windows") then
+        add_files("libs/zlib-1.3.1/contrib/minizip/iowin32.c")
+        add_defines("_CRT_SECURE_NO_WARNINGS")
+    else
+        add_defines("HAVE_UNISTD_H")
+    end
+    add_includedirs(
+        "libs/zlib-1.3.1/contrib/minizip",
+        {public = true}
+    )
+    add_packages("zlib", {public = true})
+target_end()
+
 target("NBT")
     set_kind("$(kind)")
     set_languages("c++23")
