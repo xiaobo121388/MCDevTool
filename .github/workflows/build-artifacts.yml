@@ -64,7 +64,7 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          cmake --build build --config Release --target mcdk mcdk_stdio_bridge project_operations_test project_archive_test --parallel --verbose
+          cmake --build build --config Release --target mcdk mcdk_stdio_bridge project_operations_test --parallel --verbose
 
       - name: Verify project CLI
         shell: bash

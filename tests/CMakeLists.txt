@@ -36,11 +36,6 @@ target_compile_features(project_operations_test PRIVATE cxx_std_23)
 target_link_libraries(project_operations_test PRIVATE mcdk_project_test_core)
 add_test(NAME project-operations COMMAND project_operations_test)
 
-add_executable(project_archive_test project_archive_test.cpp)
-target_compile_features(project_archive_test PRIVATE cxx_std_23)
-target_link_libraries(project_archive_test PRIVATE mcdk_core minizip_internal)
-add_test(NAME project-archive COMMAND project_archive_test)
-
 if(TARGET mcdk AND MC_DEV_TOOL_MCDK_ENABLE_CLI)
     add_test(
         NAME project-cli-protocol

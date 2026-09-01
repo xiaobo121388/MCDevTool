@@ -10,8 +10,6 @@
 #include <string_view>
 #include <vector>
 
-#include <mcdk/settings.hpp>
-
 namespace mcdk::project {
 
     inline constexpr std::uint32_t protocolVersion      = 1;
@@ -35,17 +33,6 @@ namespace mcdk::project {
         Patch,
     };
 
-    enum class ExportMode : std::uint8_t {
-        Clean,
-        Full,
-    };
-
-    enum class ConflictPolicy : std::uint8_t {
-        Error,
-        Rename,
-        Overwrite,
-    };
-
     enum class MutationOperation : std::uint8_t {
         BumpVersion,
         RegenerateUuids,
@@ -61,9 +48,6 @@ namespace mcdk::project {
         SourceChanged,
         Busy,
         IoError,
-        DestinationExists,
-        InvalidExportPattern,
-        ArchiveError,
         InvalidTarget,
         InvalidPreview,
         PreviewStale,
@@ -91,8 +75,6 @@ namespace mcdk::project {
         std::vector<std::filesystem::path>   worldPackListFiles;
         std::optional<std::filesystem::path> worldDirectory;
         std::vector<std::string>             warnings;
-        mcdk::ExportOptions                  exportOptions;
-
         [[nodiscard]] std::size_t behaviorPackCount() const noexcept;
         [[nodiscard]] std::size_t resourcePackCount() const noexcept;
     };
@@ -116,7 +98,6 @@ namespace mcdk::project {
     struct OperationResult {
         ProjectSummary                       project;
         std::vector<std::filesystem::path>   modifiedFiles;
-        std::optional<std::filesystem::path> archivePath;
         std::vector<std::string>             warnings;
         std::optional<MutationPreview>       preview;
     };
@@ -124,14 +105,6 @@ namespace mcdk::project {
     struct TargetProjectContext {
         std::filesystem::path                root;
         std::optional<std::filesystem::path> target;
-    };
-
-    struct ExportRequest {
-        std::filesystem::path                root;
-        std::filesystem::path                destination;
-        ExportMode                           mode     = ExportMode::Clean;
-        ConflictPolicy                       conflict = ConflictPolicy::Rename;
-        std::optional<std::filesystem::path> configRoot;
     };
 
     class ProjectError final : public std::runtime_error {
@@ -171,6 +144,4 @@ namespace mcdk::project {
     );
     [[nodiscard]] OperationResult
     applyProjectPreview(const std::filesystem::path& root, const MutationPreview& preview);
-    [[nodiscard]] OperationResult exportProject(const ExportRequest& request);
-
 } // namespace mcdk::project

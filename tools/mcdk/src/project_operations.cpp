@@ -1,4 +1,3 @@
-#include <mcdk/project_archive.hpp>
 #include <mcdk/project_operations.hpp>
 
 #include <algorithm>
@@ -896,7 +895,6 @@ namespace mcdk::project {
             std::vector<fs::path>   includedDirectories;
             std::optional<fs::path> worldSource;
             bool                    worldSourceDisabled = false;
-            mcdk::ExportOptions     exportOptions;
         };
 
         [[nodiscard]] DiscoveryConfig readDiscoveryConfig(const fs::path& root) {
@@ -994,183 +992,6 @@ namespace mcdk::project {
                 }
             }
 
-            if (const auto* options =
-                    optionalProperty(object, "export_options", configPath, ProjectErrorCode::InvalidProject)) {
-                const auto& exportObject = requireType(
-                    options,
-                    JsonType::Object,
-                    configPath,
-                    "export_options must be an object.",
-                    ProjectErrorCode::InvalidProject
-                );
-                if (const auto* patterns = optionalProperty(
-                        exportObject,
-                        "clean_exclude_patterns",
-                        configPath,
-                        ProjectErrorCode::InvalidProject
-                    )) {
-                    const auto& values = requireType(
-                        patterns,
-                        JsonType::Array,
-                        configPath,
-                        "clean_exclude_patterns must be an array.",
-                        ProjectErrorCode::InvalidProject
-                    );
-                    for (const auto& value : values.elements) {
-                        result.exportOptions.cleanExcludePatterns.push_back(
-                            requireType(
-                                value.get(),
-                                JsonType::String,
-                                configPath,
-                                "Each clean export exclude pattern must be a string.",
-                                ProjectErrorCode::InvalidProject
-                            )
-                                .stringValue
-                        );
-                    }
-                }
-                const auto* defaults = optionalProperty(
-                    exportObject,
-                    "use_default_full_excludes",
-                    configPath,
-                    ProjectErrorCode::InvalidProject
-                );
-                const auto* fullPatterns = optionalProperty(
-                    exportObject,
-                    "full_exclude_patterns",
-                    configPath,
-                    ProjectErrorCode::InvalidProject
-                );
-                if (defaults != nullptr) {
-                    result.exportOptions.useDefaultFullExcludes = requireType(
-                                                                      defaults,
-                                                                      JsonType::Boolean,
-                                                                      configPath,
-                                                                      "use_default_full_excludes must be boolean.",
-                                                                      ProjectErrorCode::InvalidProject
-                    )
-                                                                      .booleanValue;
-                } else if (fullPatterns != nullptr) {
-                    result.exportOptions.useDefaultFullExcludes = false;
-                }
-                if (fullPatterns != nullptr) {
-                    const auto& values = requireType(
-                        fullPatterns,
-                        JsonType::Array,
-                        configPath,
-                        "full_exclude_patterns must be an array.",
-                        ProjectErrorCode::InvalidProject
-                    );
-                    for (const auto& value : values.elements) {
-                        result.exportOptions.fullExcludePatterns.push_back(
-                            requireType(
-                                value.get(),
-                                JsonType::String,
-                                configPath,
-                                "Each full export exclude pattern must be a string.",
-                                ProjectErrorCode::InvalidProject
-                            )
-                                .stringValue
-                        );
-                    }
-                }
-            }
-            return result;
-        }
-
-        [[nodiscard]] mcdk::ExportOptions readExportOptionsConfig(const fs::path& configRoot) {
-            mcdk::ExportOptions result;
-            const auto          configPath = configRoot / ".mcdev.json";
-            if (!isRegularFileWithoutLinks(configPath)) {
-                return result;
-            }
-            auto        document = JsoncDocument::read(configPath, ProjectErrorCode::InvalidProject);
-            const auto& object   = requireType(
-                document.root.get(),
-                JsonType::Object,
-                configPath,
-                "The .mcdev.json root must be an object.",
-                ProjectErrorCode::InvalidProject
-            );
-            const auto* options =
-                optionalProperty(object, "export_options", configPath, ProjectErrorCode::InvalidProject);
-            if (options == nullptr) {
-                return result;
-            }
-            const auto& exportObject = requireType(
-                options,
-                JsonType::Object,
-                configPath,
-                "export_options must be an object.",
-                ProjectErrorCode::InvalidProject
-            );
-            if (const auto* patterns = optionalProperty(
-                    exportObject,
-                    "clean_exclude_patterns",
-                    configPath,
-                    ProjectErrorCode::InvalidProject
-                )) {
-                const auto& values = requireType(
-                    patterns,
-                    JsonType::Array,
-                    configPath,
-                    "clean_exclude_patterns must be an array.",
-                    ProjectErrorCode::InvalidProject
-                );
-                for (const auto& value : values.elements) {
-                    result.cleanExcludePatterns.push_back(requireType(
-                                                               value.get(),
-                                                               JsonType::String,
-                                                               configPath,
-                                                               "Each clean export exclude pattern must be a string.",
-                                                               ProjectErrorCode::InvalidProject
-                    )
-                                                               .stringValue);
-                }
-            }
-            const auto* defaults = optionalProperty(
-                exportObject,
-                "use_default_full_excludes",
-                configPath,
-                ProjectErrorCode::InvalidProject
-            );
-            const auto* fullPatterns = optionalProperty(
-                exportObject,
-                "full_exclude_patterns",
-                configPath,
-                ProjectErrorCode::InvalidProject
-            );
-            if (defaults != nullptr) {
-                result.useDefaultFullExcludes = requireType(
-                                                    defaults,
-                                                    JsonType::Boolean,
-                                                    configPath,
-                                                    "use_default_full_excludes must be boolean.",
-                                                    ProjectErrorCode::InvalidProject
-                )
-                                                    .booleanValue;
-            } else if (fullPatterns != nullptr) {
-                result.useDefaultFullExcludes = false;
-            }
-            if (fullPatterns != nullptr) {
-                const auto& values = requireType(
-                    fullPatterns,
-                    JsonType::Array,
-                    configPath,
-                    "full_exclude_patterns must be an array.",
-                    ProjectErrorCode::InvalidProject
-                );
-                for (const auto& value : values.elements) {
-                    result.fullExcludePatterns.push_back(requireType(
-                                                             value.get(),
-                                                             JsonType::String,
-                                                             configPath,
-                                                             "Each full export exclude pattern must be a string.",
-                                                             ProjectErrorCode::InvalidProject
-                    )
-                                                             .stringValue);
-                }
-            }
             return result;
         }
 
@@ -1349,17 +1170,15 @@ namespace mcdk::project {
 
         [[nodiscard]] LoadedProject discoverProject(
             const fs::path&                suppliedRoot,
-            const std::optional<fs::path>& suppliedTarget     = std::nullopt,
-            bool                           useDiscoveryConfig = true
+            const std::optional<fs::path>& suppliedTarget = std::nullopt
         ) {
             const auto    root   = canonicalProjectRoot(suppliedRoot);
             const auto    target = suppliedTarget ? canonicalTargetRoot(*suppliedTarget) : root;
-            const auto    config = useDiscoveryConfig ? readDiscoveryConfig(root) : DiscoveryConfig{};
+            const auto    config = readDiscoveryConfig(root);
             LoadedProject loaded;
             loaded.workspaceRoot         = root;
             loaded.targetRoot            = target;
             loaded.summary.root          = root;
-            loaded.summary.exportOptions = config.exportOptions;
             loaded.summary.name          = pathToUtf8(root.filename());
             if (loaded.summary.name.empty()) {
                 loaded.summary.name = "project";
@@ -3425,12 +3244,6 @@ namespace mcdk::project {
             return "busy";
         case ProjectErrorCode::IoError:
             return "io_error";
-        case ProjectErrorCode::DestinationExists:
-            return "destination_exists";
-        case ProjectErrorCode::InvalidExportPattern:
-            return "invalid_export_pattern";
-        case ProjectErrorCode::ArchiveError:
-            return "archive_error";
         case ProjectErrorCode::InvalidTarget:
             return "invalid_target";
         case ProjectErrorCode::InvalidPreview:
@@ -3768,35 +3581,6 @@ namespace mcdk::project {
             throw ProjectError(ProjectErrorCode::IoError, error.path1(), error.what());
         } catch (const std::exception& error) {
             throw ProjectError(ProjectErrorCode::IoError, root, error.what());
-        }
-    }
-
-    OperationResult exportProject(const ExportRequest& request) {
-        try {
-            const auto canonical  = canonicalProjectRoot(request.root);
-            const auto configRoot = request.configRoot ? canonicalProjectRoot(*request.configRoot) : canonical;
-            const auto locks      = lockProjectRoots(configRoot, canonical);
-            auto       summary    = discoverProject(canonical, std::nullopt, !request.configRoot.has_value()).summary;
-            if (request.configRoot) {
-                summary.exportOptions = readExportOptionsConfig(configRoot);
-            }
-            auto normalizedRequest       = request;
-            normalizedRequest.root       = canonical;
-            normalizedRequest.configRoot = configRoot;
-            auto warnings                = summary.warnings;
-            auto archivePath             = archive::writeProjectArchive(summary, normalizedRequest, warnings);
-            return OperationResult{
-                std::move(summary),
-                {},
-                std::move(archivePath),
-                std::move(warnings),
-            };
-        } catch (const ProjectError&) {
-            throw;
-        } catch (const fs::filesystem_error& error) {
-            throw ProjectError(ProjectErrorCode::IoError, error.path1(), error.what());
-        } catch (const std::exception& error) {
-            throw ProjectError(ProjectErrorCode::ArchiveError, request.root, error.what());
         }
     }
 

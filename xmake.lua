@@ -185,7 +185,6 @@ if has_config("build_mcdk") then
             "tools/mcdk/src/performance/profiler_runtime_owner.cpp",
             "tools/mcdk/src/performance/profiler_service.cpp",
             "tools/mcdk/src/performance/profiler_types.cpp",
-            "tools/mcdk/src/project_archive.cpp",
             "tools/mcdk/src/project_operations.cpp",
             "tools/mcdk/src/reload_code.cpp",
             "tools/mcdk/src/rpc_registry.cpp",
@@ -194,7 +193,7 @@ if has_config("build_mcdk") then
             "tools/mcdk/src/world_project.cpp"
         )
         add_includedirs("tools/mcdk/include", {public = true})
-        add_deps("mcdevtool", "mcp", "mcdev_mod_resource", "minizip_internal")
+        add_deps("mcdevtool", "mcp", "mcdev_mod_resource")
         if is_plat("windows") then
             add_syslinks("bcrypt", "gdi32", "iphlpapi", "ws2_32", {public = true})
         end
@@ -205,12 +204,11 @@ if has_config("build_mcdk") then
             set_kind("static")
             set_languages("c++23")
             add_files(
-                "tools/mcdk/src/project_archive.cpp",
                 "tools/mcdk/src/project_operations.cpp"
             )
             add_includedirs("tools/mcdk/include", {public = true})
             add_defines("MCDK_PROJECT_TEST_HOOKS")
-            add_deps("mcdevtool", "minizip_internal")
+            add_deps("mcdevtool")
             if is_plat("windows") then
                 add_syslinks("bcrypt", {public = true})
             end
@@ -300,12 +298,6 @@ if has_config("build_test") then
             add_deps("mcdk_project_test_core")
         target_end()
 
-        target("project_archive_test")
-            set_kind("binary")
-            set_languages("c++23")
-            add_files("tests/project_archive_test.cpp")
-            add_deps("mcdk_core", "minizip_internal")
-        target_end()
     end
 
 end

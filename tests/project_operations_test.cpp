@@ -666,7 +666,7 @@ namespace {
 
     void testMapMutationIsLosslessAndSynchronized() {
         TemporaryDirectory temporary;
-        const auto         root = temporary.path / fs::u8path("配置导出测试");
+        const auto         root = temporary.path / fs::u8path("项目配置测试");
         fs::create_directories(root / "db");
 
         constexpr std::string_view behaviorUuid     = "11111111-1111-4111-8111-111111111111";
@@ -714,11 +714,6 @@ namespace {
             R"({
                 "included_mod_dirs": ["./behavior_packs", "./resource_packs", "C:/outside-workspace"],
                 "world_source_path": "./",
-                "export_options": {
-                    "clean_exclude_patterns": ["drafts/**"],
-                    "use_default_full_excludes": false,
-                    "full_exclude_patterns": ["private/**", "*.tmp"],
-                },
             })"
         );
 
@@ -752,9 +747,6 @@ namespace {
         require(inspected.resourcePackCount() == 1, "Resource pack count is incorrect.");
         require(inspected.worldDirectory.has_value(), "Map content directory was not reported.");
         require(inspected.worldPackListFiles.size() == 4, "All standard and NetEase world lists must be discovered.");
-        require(!inspected.exportOptions.useDefaultFullExcludes, "Export default-exclude flag was not parsed.");
-        require(inspected.exportOptions.cleanExcludePatterns.size() == 1, "Clean export patterns were not parsed.");
-        require(inspected.exportOptions.fullExcludePatterns.size() == 2, "Custom export patterns were not parsed.");
         require(!inspected.warnings.empty(), "External configured path should produce a warning.");
 
         const auto regenerated = mcdk::project::regenerateProjectUuids(root);

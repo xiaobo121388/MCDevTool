@@ -21,7 +21,7 @@
 - 支持 Python Mod 热更新，修改代码后回到游戏前台自动触发增量刷新。
 - 支持 JSON UI 热重载，可在资源包 `ui/*.json` 变化后触发原生 UI definition reload。
 - 支持 Shader / Material 单文件热更新，可在资源包文件变化后回到游戏前台触发增量重载。
-- 支持检查项目、保真刷新 UUID、提升版本，以及导出 Clean / Full ZIP；这些操作不会隐式启动游戏或修改未选择的内容。
+- 支持检查项目、保真刷新 UUID 和提升版本；这些操作不会隐式启动游戏或修改未选择的内容。
 - 内置调试 MOD，可重定向 Python 输出、绑定热更新快捷键，并提供调试期 IPC 能力。
 - 可选启用 MCP 服务，让 AI / 自动化客户端读取日志、执行代码、分析 JSON UI、截图和点击游戏窗口。
 
@@ -75,7 +75,7 @@
 }
 ```
 
-## Mod 项目管理与 ZIP 导出
+## Mod 项目管理
 
 发布版 `mcdk` 默认包含项目操作 CLI。操作根目录默认为当前目录，也可通过 `--root` 指定。它能够识别根级单包、包含多个行为包/资源包的 AddOn，以及带 `behavior_packs` / `resource_packs` 的玩法地图。
 
@@ -88,22 +88,13 @@ mcdk project bump-version [--root PATH] [--part patch|minor|major] [--json]
 mcdk project bump-version --root WORKSPACE --target MOD
                           --part patch|minor|major --preview --json
 mcdk project apply-preview --root WORKSPACE --json < preview.json
-mcdk project export [--root PATH] --destination DIR
-                    [--config-root WORKSPACE]
-                    [--mode clean|full]
-                    [--conflict error|rename|overwrite] [--json]
 ```
 
 - UUID 刷新会更新包头、模块、项目内依赖及世界包清单。直接写入时，交互模式会要求确认，脚本或 `--json` 模式必须显式传入 `--yes`；仅生成 `--preview` 不需要确认参数。
 - 版本默认提升 `patch`，也可选择 `minor` 或 `major`。依赖和世界包清单会同步使用被引用包的新版本。
 - 传入 `--target` 时，只修改该 Mod 目录子树中的包，并同步工作区内的依赖和世界清单。所选外部 Mod 可以修改；其他外部 Mod 只读扫描，如果其引用也需要同步，操作会以 `out_of_scope_reference` 失败且不写入文件。
 - `--preview` 只生成完整的修改前/修改后快照，不写入磁盘。将响应中的 `preview` 对象或完整响应通过标准输入交给 `apply-preview` 后，核心会重新验证文件、目标集合和审批内容，再原子应用全部文件；过期预览返回 `preview_stale`。
-- `clean` 导出只包含发布所需内容；`full` 导出保留工作区配置和源码，并应用完整导出排除规则。导出不会自动刷新 UUID 或提升版本。
-- 导出所选 Mod 时，`--root` 是 ZIP 内容根；`--config-root` 仅从工作区 `.mcdev.json` 读取共享的 Full 排除规则。
-- 目标目录必须已经存在。重名文件默认使用 `rename`，生成 `(2)`、`(3)` 等后缀；也可选择报错或原子覆盖。
 - `--json` 输出固定为协议版本 1。成功退出码为 `0`，项目或文件业务错误为 `1`，参数错误为 `2`。
-
-归档文件默认命名为 `<项目目录名>.zip`，Full 模式命名为 `<项目目录名> 完整.zip`。写入过程使用目标目录中的临时文件，成功后再发布成最终文件。
 
 ## vscode断点调试
 使用插件扩展可直接提供可视化的断点能力支持。
@@ -173,22 +164,6 @@ MCDEV配置文件，若不存在字段将以此处默认值为基准。
     "world_folder_name": "MC_DEV_WORLD",
     // 玩法地图源目录："auto" 会识别当前目录；空字符串表示不启用
     "world_source_path": "auto",
-    // Mod 导出目录与排除规则；自定义模式使用相对路径 glob（支持 *、?、**）
-    "export_options": {
-        // VS Code 扩展记忆的导出目录，可使用绝对路径或工作区相对路径
-        "export_directory": "D:/Exports",
-        // 精简发布包的额外排除项，相对于最终 ZIP 根目录；内置安全排除始终生效
-        "clean_exclude_patterns": ["**/*.pyc", "**/*.pyi"],
-        // 完整压缩包的默认规则直接保存在此列表中；每项均相对于工作区根目录
-        // 禁止绝对路径、.. 和 ! 否定规则
-        "full_exclude_patterns": [
-            "**/.git/**", "**/.hg/**", "**/.svn/**", ".mcdk/**",
-            "**/node_modules/**", "**/build/**", "**/out/**", "**/dist/**",
-            "**/target/**", "**/.cache/**", "**/.pytest_cache/**",
-            "**/.mypy_cache/**", "**/.ruff_cache/**", "**/__pycache__/**",
-            "**/*.pyc", "**/*.pyo"
-        ]
-    },
     // 是否自动进入游戏存档
     "auto_join_game": true,
     // 是否附加调试MOD(boolean)，若启用将在生成的世界中包含热更新脚本(R键触发检测)并重定向输出流使其附加[Python]前缀可供筛选搜索。
@@ -402,7 +377,7 @@ MCDK MCP 的定位不是让通用 Agent 仅凭 LLM、截图和点击完成复杂
 | [nlohmann/json](https://github.com/nlohmann/json) | 处理 JSON 配置文件解析与生成 | Header-only |
 | [NBT](https://github.com/GlacieTeam/NBT) | 用于构建 `level.dat` 等 NBT 格式文件 | 依赖 BinaryStream 和 Zlib |
 | [BinaryStream](https://github.com/GlacieTeam/BinaryStream) | NBT 的底层二进制读写支持 | NBT 内部依赖 |
-| [Zlib / MiniZip](https://zlib.net) | NBT 数据压缩与解压缩、流式 ZIP 导出 | 内置 1.3.1 及 `contrib/minizip` |
+| [Zlib](https://zlib.net) | NBT 数据压缩与解压缩 | NBT 内部依赖 |
 | [CLI11](https://github.com/CLIUtils/CLI11) | 命令行参数解析 | Header-only |
 | [cpp-mcp](https://github.com/hkr04/cpp-mcp) | 实现 MCP 协议的服务器功能 | 魔改扩展协议 |
 | [Tracy](https://github.com/wolfpld/tracy) | Native CPU 采集、时间线与 zone 调用树解析 | 可选 Windows x64 组件，固定使用 0.11.1 |

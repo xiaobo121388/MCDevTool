@@ -42,6 +42,10 @@ string(FIND "${help_output}" "apply-preview" apply_preview_help)
 if(apply_preview_help EQUAL -1)
     message(FATAL_ERROR "project --help does not list apply-preview: ${help_output}")
 endif()
+string(FIND "${help_output}" "export" export_help)
+if(NOT export_help EQUAL -1)
+    message(FATAL_ERROR "project --help still lists the removed export command: ${help_output}")
+endif()
 
 execute_process(
     COMMAND "${MCDK_EXE}" project bump-version --help
@@ -60,20 +64,6 @@ foreach(required_flag IN ITEMS "--target" "--preview")
 endforeach()
 
 execute_process(
-    COMMAND "${MCDK_EXE}" project export --help
-    RESULT_VARIABLE export_help_result
-    OUTPUT_VARIABLE export_help_output
-    ERROR_VARIABLE export_help_error
-)
-if(NOT export_help_result EQUAL 0)
-    message(FATAL_ERROR "export --help returned ${export_help_result}: ${export_help_error}")
-endif()
-string(FIND "${export_help_output}" "--config-root" config_root_help)
-if(config_root_help EQUAL -1)
-    message(FATAL_ERROR "export --help does not list --config-root: ${export_help_output}")
-endif()
-
-execute_process(
     COMMAND "${MCDK_EXE}" project inspect --root "${TEST_ROOT}" --target "${TEST_ROOT}" --json
     RESULT_VARIABLE inspect_result
     OUTPUT_VARIABLE inspect_output
@@ -85,11 +75,9 @@ endif()
 string(JSON inspect_protocol GET "${inspect_output}" protocol_version)
 string(JSON inspect_ok GET "${inspect_output}" ok)
 string(JSON inspect_operation GET "${inspect_output}" operation)
-string(JSON inspect_clean_patterns_type TYPE "${inspect_output}" project export_options clean_exclude_patterns)
 if(NOT inspect_protocol EQUAL 1
    OR NOT inspect_ok
-   OR NOT inspect_operation STREQUAL "inspect"
-   OR NOT inspect_clean_patterns_type STREQUAL "ARRAY")
+   OR NOT inspect_operation STREQUAL "inspect")
     message(FATAL_ERROR "unexpected inspect response: ${inspect_output}")
 endif()
 
@@ -286,54 +274,6 @@ endif()
 string(JSON uuid_operation GET "${uuid_output}" operation)
 if(NOT uuid_operation STREQUAL "regenerate-uuids")
     message(FATAL_ERROR "unexpected UUID response: ${uuid_output}")
-endif()
-
-file(MAKE_DIRECTORY "${TEST_ROOT}/exports")
-execute_process(
-    COMMAND "${MCDK_EXE}" project export
-        --root "${TEST_ROOT}"
-        --config-root "${TEST_ROOT}"
-        --destination "${TEST_ROOT}/exports"
-        --conflict error
-        --json
-    RESULT_VARIABLE export_result
-    OUTPUT_VARIABLE export_output
-    ERROR_VARIABLE export_error
-)
-if(NOT export_result EQUAL 0)
-    message(FATAL_ERROR "project export returned ${export_result}: ${export_error}")
-endif()
-string(JSON archive_path GET "${export_output}" archive_path)
-if(NOT EXISTS "${archive_path}")
-    message(FATAL_ERROR "export response archive does not exist: ${export_output}")
-endif()
-
-execute_process(
-    COMMAND "${MCDK_EXE}" project export --root "${TEST_ROOT}" --destination "${TEST_ROOT}/exports" --conflict error --json
-    RESULT_VARIABLE conflict_result
-    OUTPUT_VARIABLE conflict_output
-    ERROR_VARIABLE conflict_error
-)
-if(NOT conflict_result EQUAL 1)
-    message(FATAL_ERROR "conflicting export returned ${conflict_result}, expected 1: ${conflict_error}")
-endif()
-string(JSON conflict_code GET "${conflict_output}" error code)
-if(NOT conflict_code STREQUAL "destination_exists")
-    message(FATAL_ERROR "unexpected conflict response: ${conflict_output}")
-endif()
-
-execute_process(
-    COMMAND "${MCDK_EXE}" project export --root "${TEST_ROOT}" --json
-    RESULT_VARIABLE argument_result
-    OUTPUT_VARIABLE argument_output
-    ERROR_QUIET
-)
-if(NOT argument_result EQUAL 2)
-    message(FATAL_ERROR "export without --destination returned ${argument_result}, expected 2")
-endif()
-string(JSON argument_code GET "${argument_output}" error code)
-if(NOT argument_code STREQUAL "invalid_arguments")
-    message(FATAL_ERROR "unexpected argument error response: ${argument_output}")
 endif()
 
 file(REMOVE "${preview_input}" "${invalid_preview_input}" "${uuid_preview_input}")

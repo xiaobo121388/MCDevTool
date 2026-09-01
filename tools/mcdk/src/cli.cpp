@@ -191,12 +191,6 @@ namespace {
             {"manifests", std::move(manifests)},
             {"pack_directories", std::move(packDirectories)},
             {"world_pack_list_files", std::move(worldPackListFiles)},
-            {"export_options",
-             {
-                 {"clean_exclude_patterns", summary.exportOptions.cleanExcludePatterns},
-                 {"use_default_full_excludes", summary.exportOptions.useDefaultFullExcludes},
-                 {"full_exclude_patterns", summary.exportOptions.fullExcludePatterns},
-             }},
             {"warnings", summary.warnings},
         };
     }
@@ -207,11 +201,6 @@ namespace {
             for (const auto& path : result.modifiedFiles) {
                 modifiedFiles.push_back(pathJson(path));
             }
-        }
-
-        Json archivePath = nullptr;
-        if (!result.preview && result.archivePath) {
-            archivePath = pathJson(*result.archivePath);
         }
 
         Json preview = nullptr;
@@ -225,7 +214,9 @@ namespace {
             {"operation", std::string(operation)},
             {"project", projectJson(result.project)},
             {"modified_files", std::move(modifiedFiles)},
-            {"archive_path", std::move(archivePath)},
+            // Retained as an inert protocol v1 compatibility field. Project archive
+            // creation is no longer supported, so successful operations always return null.
+            {"archive_path", nullptr},
             {"warnings", result.warnings},
             {"preview", std::move(preview)},
         };
@@ -277,9 +268,6 @@ namespace {
                 std::cout << "Modified: " << pathJson(path) << '\n';
             }
         }
-        if (result.archivePath) {
-            std::cout << "Archive: " << pathJson(*result.archivePath) << '\n';
-        }
         printWarnings(result.warnings);
     }
 
@@ -300,20 +288,6 @@ namespace {
             return project::VersionPart::Minor;
         }
         return project::VersionPart::Patch;
-    }
-
-    [[nodiscard]] project::ExportMode parseExportMode(const std::string& value) {
-        return value == "full" ? project::ExportMode::Full : project::ExportMode::Clean;
-    }
-
-    [[nodiscard]] project::ConflictPolicy parseConflictPolicy(const std::string& value) {
-        if (value == "error") {
-            return project::ConflictPolicy::Error;
-        }
-        if (value == "overwrite") {
-            return project::ConflictPolicy::Overwrite;
-        }
-        return project::ConflictPolicy::Rename;
     }
 
     [[nodiscard]] std::optional<fs::path> suppliedPath(const CLI::Option* option, const std::string& value) {
@@ -524,7 +498,7 @@ int MCDK_CLI_PARSE(int argc, char* argv[]) {
     std::string createName = "auto";
     createCommand->add_option("-n,--name", createName, "项目名称")->default_val("auto");
 
-    auto* projectCommand = app.add_subcommand("project", "Inspect, configure, and export the current project");
+    auto* projectCommand = app.add_subcommand("project", "Inspect and update the current project");
     projectCommand->require_subcommand(1);
 
     auto* inspectCommand = projectCommand->add_subcommand("inspect", "Inspect project manifests and configuration");
@@ -572,28 +546,6 @@ int MCDK_CLI_PARSE(int argc, char* argv[]) {
     bool applyPreviewJson = false;
     applyPreviewCommand->add_option("--root", applyPreviewRoot, "Project root directory")->default_val(".");
     applyPreviewCommand->add_flag("--json", applyPreviewJson, "Write protocol v1 JSON to stdout");
-
-    auto* exportCommand = projectCommand->add_subcommand("export", "Export a clean or full project ZIP archive");
-    std::string exportRoot = ".";
-    std::string exportConfigRoot;
-    std::string exportDestination;
-    std::string exportMode = "clean";
-    std::string exportConflict = "rename";
-    bool exportJson = false;
-    exportCommand->add_option("--root", exportRoot, "Project root directory")->default_val(".");
-    auto* exportConfigRootOption = exportCommand->add_option(
-        "--config-root",
-        exportConfigRoot,
-        "Project root whose export configuration should be used"
-    );
-    exportCommand->add_option("--destination", exportDestination, "Existing destination directory")->required();
-    exportCommand->add_option("--mode", exportMode, "Archive mode")
-        ->check(CLI::IsMember({"clean", "full"}))
-        ->default_val("clean");
-    exportCommand->add_option("--conflict", exportConflict, "Existing archive policy")
-        ->check(CLI::IsMember({"error", "rename", "overwrite"}))
-        ->default_val("rename");
-    exportCommand->add_flag("--json", exportJson, "Write protocol v1 JSON to stdout");
 
     bool jsonRequested = false;
     std::string requestedOperation = "unknown";
@@ -684,17 +636,5 @@ int MCDK_CLI_PARSE(int argc, char* argv[]) {
             return project::applyProjectPreview(utf8Path(applyPreviewRoot), readMutationPreview());
         });
     }
-    if (*exportCommand) {
-        return runProjectOperation("export", exportJson, [&] {
-            project::ExportRequest request;
-            request.root = utf8Path(exportRoot);
-            request.destination = utf8Path(exportDestination);
-            request.mode = parseExportMode(exportMode);
-            request.conflict = parseConflictPolicy(exportConflict);
-            request.configRoot = suppliedPath(exportConfigRootOption, exportConfigRoot);
-            return project::exportProject(request);
-        });
-    }
-
     return 2;
 }
