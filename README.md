@@ -21,7 +21,6 @@
 - 支持 Python Mod 热更新，修改代码后回到游戏前台自动触发增量刷新。
 - 支持 JSON UI 热重载，可在资源包 `ui/*.json` 变化后触发原生 UI definition reload。
 - 支持 Shader / Material 单文件热更新，可在资源包文件变化后回到游戏前台触发增量重载。
-- 支持检查项目、保真刷新 UUID 和提升版本；这些操作不会隐式启动游戏或修改未选择的内容。
 - 内置调试 MOD，可重定向 Python 输出、绑定热更新快捷键，并提供调试期 IPC 能力。
 - 可选启用 MCP 服务，让 AI / 自动化客户端读取日志、执行代码、分析 JSON UI、截图和点击游戏窗口。
 
@@ -74,27 +73,6 @@
     ]
 }
 ```
-
-## Mod 项目管理
-
-发布版 `mcdk` 默认包含项目操作 CLI。操作根目录默认为当前目录，也可通过 `--root` 指定。它能够识别根级单包、包含多个行为包/资源包的 AddOn，以及带 `behavior_packs` / `resource_packs` 的玩法地图。
-
-```text
-mcdk project inspect [--root PATH] [--json]
-mcdk project inspect --root WORKSPACE --target MOD [--json]
-mcdk project regenerate-uuids [--root PATH] [--yes] [--json]
-mcdk project regenerate-uuids --root WORKSPACE --target MOD --preview --json
-mcdk project bump-version [--root PATH] [--part patch|minor|major] [--json]
-mcdk project bump-version --root WORKSPACE --target MOD
-                          --part patch|minor|major --preview --json
-mcdk project apply-preview --root WORKSPACE --json < preview.json
-```
-
-- UUID 刷新会更新包头、模块、项目内依赖及世界包清单。直接写入时，交互模式会要求确认，脚本或 `--json` 模式必须显式传入 `--yes`；仅生成 `--preview` 不需要确认参数。
-- 版本默认提升 `patch`，也可选择 `minor` 或 `major`。依赖和世界包清单会同步使用被引用包的新版本。
-- 传入 `--target` 时，只修改该 Mod 目录子树中的包，并同步工作区内的依赖和世界清单。所选外部 Mod 可以修改；其他外部 Mod 只读扫描，如果其引用也需要同步，操作会以 `out_of_scope_reference` 失败且不写入文件。
-- `--preview` 只生成完整的修改前/修改后快照，不写入磁盘。将响应中的 `preview` 对象或完整响应通过标准输入交给 `apply-preview` 后，核心会重新验证文件、目标集合和审批内容，再原子应用全部文件；过期预览返回 `preview_stale`。
-- `--json` 输出固定为协议版本 1。成功退出码为 `0`，项目或文件业务错误为 `1`，参数错误为 `2`。
 
 ## vscode断点调试
 使用插件扩展可直接提供可视化的断点能力支持。
